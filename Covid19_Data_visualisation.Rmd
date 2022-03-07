@@ -1,0 +1,117 @@
+---
+title: "Untitled"
+author: "George Melrose"
+date: "28/02/2022"
+output:
+  ioslides_presentation:
+    widescreen: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include = FALSE, echo = FALSE}
+library(readr)
+daily_admissions <- read_csv("C:/Users/georg/Downloads/daily_covid_admissions_20220223.csv", show_col_types = FALSE)
+
+str(daily_admissions)
+
+Sys.Date()
+
+class(daily_admissions$Date)
+
+library("lubridate")
+
+daily_admissions$Date <- ymd(daily_admissions$Date)
+
+class(daily_admissions$Date)
+
+daily_admissions <- subset(daily_admissions, select = -SevenDayAverageQF) 
+
+daily_admissions <- daily_admissions[-c(1:6),]
+
+sum(is.na(daily_admissions$SevenDayAverage))
+
+daily_admissions <- daily_admissions[complete.cases(daily_admissions),]
+
+library(dygraphs)
+library(xts)          # To make the convertion data-frame / xts format
+library(lubridate)
+
+# Then you can create the xts necessary to use dygraph
+don <- xts(x = daily_admissions$SevenDayAverage, order.by = daily_admissions$Date)
+
+library("ggplot2")
+library(hrbrthemes)
+```
+
+## Daily COVID-19 Hospital Admissions in Scotland {.flexbox .vcenter}
+```{r,, echo=FALSE}
+ dygraph(don, xlab = "Date", ylab = "7- Day Moving Average of Daily COVID-19 Hospital Admissions") %>%
+     dySeries("V1", label = "Averaged Daily Hospital Admissions") %>%
+  dyOptions(labelsUTC = TRUE, fillGraph=TRUE, fillAlpha=0.1, drawGrid = FALSE, colors = "#2c7fb8") %>%
+  dyRangeSelector() %>%
+  dyCrosshair(direction = "vertical") %>%
+  dyHighlight(highlightCircleSize = 5, highlightSeriesBackgroundAlpha = 0.2, hideOnMouseOut = FALSE) %>%
+  dyAnnotation("2020-12-21", text = "α", tooltip = "Alpha variant of concern announced in UK") %>%
+  dyAnnotation("2021-11-26", text = "O", tooltip = "Omicron variant of concern announced by WHO") %>%
+  dyShading(from = "2020-03-24", to = "2020-07-10", color = "#CCEBD6") %>%
+  dyShading(from = "2021-01-05", to = "2021-08-09", color = "#EF7676") %>%
+  dyEvent("2021-02-25", "1.5 mil. people w/ 1st Vaccine dose ", labelLoc = "top") %>%
+  dyEvent("2021-03-17", ">2 mil. people w/ 1st Vaccine dose ", labelLoc = "top") %>%
+  dyEvent("2021-12-21", ">70% adults w/ 3rd Vaccine dose ", labelLoc = "top") 
+
+```
+
+```{r, include = FALSE, echo = FALSE}
+library(readr)
+
+data1819 <- read_csv("C:/Users/georg/Downloads/hospital_admissions_hscp_specialty_20220202.csv", show_col_types = FALSE)
+
+library(dplyr)
+data1819 <- data1819 %>% select(1, 2, 5, 7, 8, 9)
+data1819 <- filter(data1819, Specialty == "All")
+
+class(data1819$WeekEnding)
+
+library(lubridate)
+data1819$WeekEnding <- parse_date_time(data1819$WeekEnding, "%y%m%d")
+
+class(data1819$WeekEnding)
+
+data1819 <- data1819 %>% select(1, 4, 5, 6)
+
+
+data1819 <- aggregate(data1819[ ,2:4], FUN="sum", by=list(data1819$WeekEnding))
+
+data1819 <- data1819 %>% select(1, 2, 3)
+
+library(dygraphs)
+library(xts) 
+
+class(data1819$Date)
+
+names(data1819)[names(data1819) == "Group.1"] <- "Date"
+names(data1819)[names(data1819) == "NumberAdmissions"] <- "No.Pandemic Admissions"
+names(data1819)[names(data1819) == "Average20182019"] <- "Average 2018-19 Admissions"
+
+don2 <- xts(x=data1819[,-1], order.by = data1819$Date)
+
+```
+
+
+## Weekly Hospital Admissions in Scotland - Pre-Pandemic vs Pandemic {.flexbox .vcenter}
+
+```{r}
+dygraph(don2, xlab = "Date", ylab = "Scotland's Weekly Hospital Admissions") %>%
+  dySeries("Average 2018-19 Admissions", label = "Average 2018-19 Admissions") %>%
+  dySeries("No.Pandemic Admissions", label = "No.Pandemic Admissions", color = "green") %>%
+  dyOptions(fillGraph = TRUE, fillAlpha = 0.1) %>%
+  dyRangeSelector(height = 20) %>%
+  dyCrosshair(direction = "vertical") %>%
+  dyHighlight(highlightCircleSize = 5, highlightSeriesBackgroundAlpha = 0.2, hideOnMouseOut = FALSE) %>%
+  dyShading(from = "2020-03-24", to = "2020-07-10", color = "#E2ABE1") 
+```
+```
+
